@@ -5,6 +5,11 @@ name = "pypi"
 
 [packages]
 python-dotenv = "*"
+requests = "*"
+kafka-python = "*"
+google-cloud-storage = "*"
+python-http-client = "*"
+confluent-kafka = "*"
 
 [dev-packages]
 
