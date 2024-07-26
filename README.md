@@ -5,4 +5,10 @@
 
 ![Data pipeline](image.png)
 
+![ML pipeline 1](image-1.png)
+
+![ML pipeline 2](image-2.png)
+
+![alt text](image-3.png)
+
 
