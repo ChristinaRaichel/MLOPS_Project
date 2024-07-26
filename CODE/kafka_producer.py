@@ -38,11 +38,11 @@ def delivery_report(err, msg):
 
 while True:
     news_data = news_streaming.stream_function()
-    print(news_data)
     news_data = json.loads(news_data)
 
     for news in news_data['data']:
         producer.send(TOPIC_NAME, news)
+    print('1 poll')
 
     # Sleep for a specified time before fetching again
     time.sleep(120)
