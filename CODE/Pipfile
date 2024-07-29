@@ -10,6 +10,7 @@ kafka-python = "*"
 google-cloud-storage = "*"
 python-http-client = "*"
 confluent-kafka = "*"
+google-cloud-bigquery = "*"
 
 [dev-packages]
 
