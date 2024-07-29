@@ -5,7 +5,7 @@ import os
 # Set up BigQuery client
 bigquery_client = bigquery.Client()
 dataset_id = 'news_dataset'
-table_id = ' news_data_table'
+table_id = 'news_data_table'
 
 GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME')
 GCS_FILE_PREFIX =  os.getenv('GCS_FILE_PREFIX')
