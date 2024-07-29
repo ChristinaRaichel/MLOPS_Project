@@ -24,7 +24,7 @@ consumer_gcs = KafkaConsumer(
     sasl_plain_username = KAFKA_API_KEY,
     sasl_plain_password = KAFKA_API_SECRET,
     sasl_mechanism = 'PLAIN',
-    auto_offset_reset='earliest',
+    auto_offset_reset='latest',
     enable_auto_commit=True,
     value_deserializer=lambda x: json.loads(x.decode('utf-8'))
 )
