@@ -11,6 +11,9 @@ google-cloud-storage = "*"
 python-http-client = "*"
 confluent-kafka = "*"
 google-cloud-bigquery = "*"
+apache-airflow = "*"
+pyspark = "*"
+pybigquery = "*"
 
 [dev-packages]
 
