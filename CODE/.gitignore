@@ -4,3 +4,7 @@ settings.json
 .env
 *.ipynb
 *.json
+original*
+spark_job.py
+dependency*
+pom.prop*
