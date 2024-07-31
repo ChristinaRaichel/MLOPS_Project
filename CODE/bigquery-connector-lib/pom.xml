@@ -31,8 +31,8 @@
         <!-- GCS Connector Dependency -->
         <dependency>
             <groupId>com.google.cloud.bigdataoss</groupId>
-            <artifactId>gcs-connector-hadoop2</artifactId>
-            <version>3.0.1</version>
+            <artifactId>gcs-connector-hadoop3</artifactId>
+            <version>2.2.24</version>
         </dependency>
     </dependencies>
 
