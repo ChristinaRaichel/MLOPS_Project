@@ -105,7 +105,7 @@ def process_df(df):
 
     pivot = word_freq.groupBy("word").pivot("label").sum("count").na.fill(0)
 
-    word_freq_dict = pivot.rdd.map(lambda row: (row["word"], {'negative':row['negative'] if row['negative'] else 0, 'positive': row['positive'] if row['positive'] else 0})).collectAsMap()
+    word_freq_dict = pivot.rdd.map(lambda row: (row["word"], {'negative':row['negative'], 'positive': row['positive'] })).collectAsMap()
 
     df = df.groupBy("text","label").agg(collect_list("word").alias("words"))
 
