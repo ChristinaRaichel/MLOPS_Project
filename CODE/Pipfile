@@ -14,8 +14,12 @@ google-cloud-bigquery = "*"
 apache-airflow = "*"
 pyspark = "*"
 pybigquery = "*"
+nltk = "*"
+numpy = "1.*"
+textblob = "*"
 
 [dev-packages]
+ipykernel = "*"
 
 [requires]
-python_version = "3.10"
+python_version = "*"
