@@ -47,10 +47,10 @@ stop_words.discard('not')
 
 # Load files from GCS to BigQuery
 blobs = bucket.list_blobs(prefix=GCS_FILE_PREFIX)
-#json_files = [f"gs://{BUCKET_NAME}/{blob.name}" for blob in blobs if blob.name.endswith('.json')]
-json_files = 'gs://news_api_stream_bucket/news-articles/2024-07-25T23:35:03.000000Z_de8333a6-dac7-45aa-a035-c32df5e6af81.json'
+json_files = [f"gs://{BUCKET_NAME}/{blob.name}" for blob in blobs if blob.name.endswith('.json')]
+#json_files = 'gs://news_api_stream_bucket/news-articles/2024-07-25T23:35:03.000000Z_de8333a6-dac7-45aa-a035-c32df5e6af81.json'
 #print(json_files)
-df = spark.read.json(json_files)
+df = spark.read.json(json_files[:3])
 
 def label_data(text):
     blob = TextBlob(text)
@@ -110,7 +110,7 @@ def process_df(df):
 
     word_freq_dict = rdd.map(map_row).collectAsMap()
 
-    df = df.groupBy("text","label").agg(collect_list("word").alias("words"))
+    df = df.groupBy("title","description","snippet","language","timestamp","source","categories","text","label").agg(collect_list("word").alias("words"))
 
 
     def get_positive_freq(words):
@@ -126,27 +126,24 @@ def process_df(df):
     df = df.withColumn("negative_freq", negative_freq_udf(col("words")))
     df = df.withColumn("feature", array(lit(1), col("positive_freq"), col("negative_freq")))
     df = df.withColumn("actual_label", when(df.label == 'positive', 1).otherwise(0))
-    df = df.select("text","words","feature","actual_label")
 
     return df
 
 label_udf = udf(label_data, StringType())
-df = df.withColumn("timestamp", to_timestamp('published_at',  "yyyy-MM-dd HH:mm:ss"))
+df = df.withColumn("timestamp", to_timestamp('published_at',  "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"))
 df = df.withColumn("text", concat(col("title"), lit(" "), col("description"), lit(" "), col("snippet")))
 df = df.withColumn("label", label_udf(col("text")))
-df_out = process_df(df)
-df_out.show()
+df = process_df(df)
+df = df.select(col("title"), col("description"), col("snippet"),col("language"),col("timestamp"),col("source"),col("categories"),col("words"),col("feature"),col("actual_label"))
+df = df.withColumn("categories", explode(col("categories")))
+df.show()
 
-#df = df.select(col("title"), col("description"), col("snippet"),col("language"),col("timestamp"),col("source"),col("categories"))
-#df = df.withColumn("categories", explode(col("categories")))
-
-
-
-"""df.write \
+df.write \
 .format("bigquery") \
 .option("table", f"{project_id}:{dataset_id}.{table_id}") \
 .option("temporaryGcsBucket", os.getenv('GCS_BUCKET_NAME')) \
 .mode("append") \
 .save()
-"""        
+
+     
 spark.stop()
