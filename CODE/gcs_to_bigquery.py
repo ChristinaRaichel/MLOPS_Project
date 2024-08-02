@@ -69,16 +69,6 @@ def process_df(df):
     df = df.withColumn("text", lower(col("text")))
     df = df.withColumn("text", regexp_replace(col("text"),"[^a-zA-Z\s]", ""))
 
-    df = df.filter(
-        col("text").isNotNull() & (col("text") != "") 
-        #col("last_name").isNotNull() & (col("last_name") != "") &
-        
-    )
-    #cleaning
-    #lowcase #removepunct #removstop #lemm #token``
-    df = df.withColumn("text", lower(col("text")))
-    df = df.withColumn("text", regexp_replace(col("text"),"[^a-zA-Z\s]", ""))
-
     # Tokenize the text
     tokenizer = Tokenizer(inputCol='text', outputCol='words')
     df = tokenizer.transform(df)
@@ -104,8 +94,21 @@ def process_df(df):
     word_freq = df.groupBy("word", "label").count()
 
     pivot = word_freq.groupBy("word").pivot("label").sum("count").na.fill(0)
+    
+    def get_column_value(row, col_name, default_value=0):
+        return getattr(row, col_name, default_value)
 
-    word_freq_dict = pivot.rdd.map(lambda row: (row["word"], {'negative':row['negative'], 'positive': row['positive'] })).collectAsMap()
+    rdd = pivot.rdd
+    pivot_columns = pivot.columns
+
+    def map_row(row):
+        return (
+            row.word, {'negative':get_column_value(row, 'negative', 0.0) if 'negative' in pivot_columns else 0,
+                        'positive': get_column_value(row, 'positive', 0.0) if 'positive' in pivot_columns else 0
+            }           
+        )
+
+    word_freq_dict = rdd.map(map_row).collectAsMap()
 
     df = df.groupBy("text","label").agg(collect_list("word").alias("words"))
 
@@ -131,13 +134,13 @@ label_udf = udf(label_data, StringType())
 df = df.withColumn("timestamp", to_timestamp('published_at',  "yyyy-MM-dd HH:mm:ss"))
 df = df.withColumn("text", concat(col("title"), lit(" "), col("description"), lit(" "), col("snippet")))
 df = df.withColumn("label", label_udf(col("text")))
-df = process_df(df)
-df.show()
+df_out = process_df(df)
+df_out.show()
 
 #df = df.select(col("title"), col("description"), col("snippet"),col("language"),col("timestamp"),col("source"),col("categories"))
 #df = df.withColumn("categories", explode(col("categories")))
 
-# 1 timestamp
+
 
 """df.write \
 .format("bigquery") \
