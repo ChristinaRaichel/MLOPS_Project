@@ -50,7 +50,7 @@ blobs = bucket.list_blobs(prefix=GCS_FILE_PREFIX)
 json_files = [f"gs://{BUCKET_NAME}/{blob.name}" for blob in blobs if blob.name.endswith('.json')]
 #json_files = 'gs://news_api_stream_bucket/news-articles/2024-07-25T23:35:03.000000Z_de8333a6-dac7-45aa-a035-c32df5e6af81.json'
 #print(json_files)
-df = spark.read.json(json_files[:3])
+df = spark.read.json(json_files)
 
 def label_data(text):
     blob = TextBlob(text)
@@ -136,7 +136,6 @@ df = df.withColumn("label", label_udf(col("text")))
 df = process_df(df)
 df = df.select(col("title"), col("description"), col("snippet"),col("language"),col("timestamp"),col("source"),col("categories"),col("words"),col("feature"),col("actual_label"))
 df = df.withColumn("categories", explode(col("categories")))
-df.show()
 
 df.write \
 .format("bigquery") \
