@@ -47,8 +47,8 @@ stop_words.discard('not')
 
 # Load files from GCS to BigQuery
 blobs = bucket.list_blobs(prefix=GCS_FILE_PREFIX)
-#json_files = [f"gs://{BUCKET_NAME}/{blob.name}" for blob in blobs if blob.name.endswith('.json')]
-json_files = 'gs://news_api_stream_bucket/news-articles/2024-07-25T23:35:03.000000Z_de8333a6-dac7-45aa-a035-c32df5e6af81.json'
+json_files = [f"gs://{BUCKET_NAME}/{blob.name}" for blob in blobs if blob.name.endswith('.json')]
+#json_files = 'gs://news_api_stream_bucket/news-articles/2024-07-25T23:35:03.000000Z_de8333a6-dac7-45aa-a035-c32df5e6af81.json'
 #print(json_files)
 df = spark.read.json(json_files)
 
@@ -66,16 +66,6 @@ def process_df(df):
     )
     #cleaning
     #lowcase #removepunct #removstop #lemm #token
-    df = df.withColumn("text", lower(col("text")))
-    df = df.withColumn("text", regexp_replace(col("text"),"[^a-zA-Z\s]", ""))
-
-    df = df.filter(
-        col("text").isNotNull() & (col("text") != "") 
-        #col("last_name").isNotNull() & (col("last_name") != "") &
-        
-    )
-    #cleaning
-    #lowcase #removepunct #removstop #lemm #token``
     df = df.withColumn("text", lower(col("text")))
     df = df.withColumn("text", regexp_replace(col("text"),"[^a-zA-Z\s]", ""))
 
@@ -104,10 +94,23 @@ def process_df(df):
     word_freq = df.groupBy("word", "label").count()
 
     pivot = word_freq.groupBy("word").pivot("label").sum("count").na.fill(0)
+    
+    def get_column_value(row, col_name, default_value=0):
+        return getattr(row, col_name, default_value)
 
-    word_freq_dict = pivot.rdd.map(lambda row: (row["word"], {'negative':row['negative'], 'positive': row['positive'] })).collectAsMap()
+    rdd = pivot.rdd
+    pivot_columns = pivot.columns
 
-    df = df.groupBy("text","label").agg(collect_list("word").alias("words"))
+    def map_row(row):
+        return (
+            row.word, {'negative':get_column_value(row, 'negative', 0.0) if 'negative' in pivot_columns else 0,
+                        'positive': get_column_value(row, 'positive', 0.0) if 'positive' in pivot_columns else 0
+            }           
+        )
+
+    word_freq_dict = rdd.map(map_row).collectAsMap()
+
+    df = df.groupBy("title","description","snippet","language","timestamp","source","categories","text","label").agg(collect_list("word").alias("words"))
 
 
     def get_positive_freq(words):
@@ -123,27 +126,23 @@ def process_df(df):
     df = df.withColumn("negative_freq", negative_freq_udf(col("words")))
     df = df.withColumn("feature", array(lit(1), col("positive_freq"), col("negative_freq")))
     df = df.withColumn("actual_label", when(df.label == 'positive', 1).otherwise(0))
-    df = df.select("text","words","feature","actual_label")
 
     return df
 
 label_udf = udf(label_data, StringType())
-df = df.withColumn("timestamp", to_timestamp('published_at',  "yyyy-MM-dd HH:mm:ss"))
+df = df.withColumn("timestamp", to_timestamp('published_at',  "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"))
 df = df.withColumn("text", concat(col("title"), lit(" "), col("description"), lit(" "), col("snippet")))
 df = df.withColumn("label", label_udf(col("text")))
 df = process_df(df)
-df.show()
+df = df.select(col("title"), col("description"), col("snippet"),col("language"),col("timestamp"),col("source"),col("categories"),col("words"),col("feature"),col("actual_label"))
+df = df.withColumn("categories", explode(col("categories")))
 
-#df = df.select(col("title"), col("description"), col("snippet"),col("language"),col("timestamp"),col("source"),col("categories"))
-#df = df.withColumn("categories", explode(col("categories")))
-
-# 1 timestamp
-
-"""df.write \
+df.write \
 .format("bigquery") \
 .option("table", f"{project_id}:{dataset_id}.{table_id}") \
 .option("temporaryGcsBucket", os.getenv('GCS_BUCKET_NAME')) \
 .mode("append") \
 .save()
-"""        
+
+     
 spark.stop()
